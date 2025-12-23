@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Therapy Hub V22 (Joystick & Fast Flappy)</title>
+    <title>Therapy Hub V24 (Snake Growth + 15 to Lvl)</title>
     
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
@@ -103,7 +103,7 @@
         .control-area { width: 100%; margin-top: 10px; display: none; box-sizing: border-box; }
         .control-area.show { display: block; }
 
-        /* PONG/TETRIS SLIDER */
+        /* SLIDERS */
         input[type=range].game-slider {
             -webkit-appearance: none; width: 100%; height: 50px; 
             background: #222; border-radius: 25px; border: 2px solid #444;
@@ -134,7 +134,7 @@
             border-radius: 50%; position: absolute;
             top: 50%; left: 50%; transform: translate(-50%, -50%);
             box-shadow: 0 0 15px rgba(9, 132, 227, 0.6);
-            pointer-events: none; /* Let clicks pass to container */
+            pointer-events: none; 
         }
 
         .swipe-hint { color: #666; font-size: 0.8rem; margin-bottom: 5px; }
@@ -157,12 +157,13 @@
 
     <div id="screen-login" class="screen active card">
         <h1>👁️ THERAPY HUB</h1>
-        <p style="color:var(--text-mute); font-size:0.9rem;">V22 (Joystick Snake + Fast Flappy)</p>
+        <p style="color:var(--text-mute); font-size:0.9rem;">V24 (Growth + 15/Level)</p>
         <div class="alert-box">
             ⚠️ <strong>INSTRUCTIONS:</strong><br>
             1. Wear Anaglyph Glasses.<br>
             2. Remove Ghosting in Setup.<br>
-            3. Duration: <strong>15 Minutes</strong>.
+            3. <strong>Set Device Brightness to MAX ☀️</strong>.<br>
+            4. Duration: <strong>15 Minutes</strong>.
         </div>
         <input type="text" id="pID" placeholder="Enter Participant ID">
         <button class="btn btn-primary" onclick="gotoSetup()">NEXT: SETUP</button>
@@ -356,7 +357,6 @@
         const cvs = document.getElementById('gameCanvas'); ctx = cvs.getContext('2d');
         
         setupTouchControls(cvs); 
-        // Joystick Setup for Snake
         if(gameName === 'SNAKE') setupJoystick();
 
         document.querySelectorAll('.control-area').forEach(e => e.classList.remove('show'));
@@ -397,25 +397,14 @@
         zone.addEventListener('touchend', (e) => {
             e.preventDefault();
             knob.style.transform = `translate(-50%, -50%)`; // Reset visual center
-            // Snake continues in last direction, no need to reset logic
         });
 
         function updateJoystick(touch) {
             let x = touch.clientX - rect.left - center.x;
             let y = touch.clientY - rect.top - center.y;
-            
-            // Limit Drag Distance
             let dist = Math.sqrt(x*x + y*y);
-            if(dist > maxDist) {
-                let angle = Math.atan2(y, x);
-                x = Math.cos(angle) * maxDist;
-                y = Math.sin(angle) * maxDist;
-            }
-            
-            // Move Knob
+            if(dist > maxDist) { let angle = Math.atan2(y, x); x = Math.cos(angle) * maxDist; y = Math.sin(angle) * maxDist; }
             knob.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
-
-            // Calculate Angle for Direction (4-Way)
             let angleDeg = Math.atan2(y, x) * 180 / Math.PI;
             if (angleDeg > -45 && angleDeg <= 45) inputSnake('RIGHT');
             else if (angleDeg > 45 && angleDeg <= 135) inputSnake('DOWN');
@@ -451,7 +440,7 @@
     
     function showLevelUp() { ctx.save(); ctx.fillStyle = "#0984e3"; ctx.font = "bold 30px 'Segoe UI'"; ctx.textAlign = "center"; ctx.fillText("LEVEL UP!", 180, 200); ctx.restore(); }
 
-    // --- GAME 1: SNAKE ---
+    // --- GAME 1: SNAKE (Growth Added) ---
     let snake = [], food = {}, d = "RIGHT";
     function initSnake() { snake = [{x: 9*box, y: 10*box}, {x: 8*box, y: 10*box}, {x: 7*box, y: 10*box}]; createFood(); d = "RIGHT"; }
     function startSnakeLoop() { 
@@ -466,12 +455,30 @@
         let sx = snake[0].x; let sy = snake[0].y;
         if(d=="LEFT") sx -= box; if(d=="UP") sy -= box; if(d=="RIGHT") sx += box; if(d=="DOWN") sy += box;
         if(sx < 0 || sx >= 360 || sy < 0 || sy >= 400) { initSnake(); return; }
+        // Food Logic
         if(sx == food.x && sy == food.y) { 
             totalScore++; levelScore++; createFood(); 
-            if(levelScore >= 30) { if(currentLevel < 20) currentLevel++; levelScore = 0; showLevelUp(); } 
+            // Level Up Check (15 Food)
+            if(levelScore >= 15) { 
+                if(currentLevel < 20) { 
+                    currentLevel++; showLevelUp(); 
+                    // GROWTH MECHANIC: Grow 2 extra segments on Level Up
+                    let tail = snake[snake.length-1];
+                    snake.push({x:tail.x, y:tail.y});
+                    snake.push({x:tail.x, y:tail.y});
+                } 
+                levelScore = 0; 
+            } 
             updateLevelUI(); 
         } else { snake.pop(); }
-        snake.unshift({x:sx, y:sy}); drawSnake();
+        
+        let newHead = {x:sx, y:sy};
+        if(checkSelfCollide(newHead, snake)) { initSnake(); return; }
+        snake.unshift(newHead); drawSnake();
+    }
+    function checkSelfCollide(head, array) {
+        for(let i=0; i<array.length; i++) { if(head.x == array[i].x && head.y == array[i].y) return true; }
+        return false;
     }
     function drawSnake() {
         clearCanvas();
@@ -559,18 +566,17 @@
         if(tPiece) { ctx.fillStyle = appConfig.renderLeft; for(let r=0; r<tPiece.shape.length; r++) { for(let c=0; c<tPiece.shape[r].length; c++) { if(tPiece.shape[r][c] !== 0) ctx.fillRect(tOffsetX + (tPiece.x+c)*tSize, (tPiece.y+r)*tSize, tSize-1, tSize-1); } } }
     }
 
-    // --- GAME 5: FLAPPY BIRD (Variable Speed) ---
+    // --- GAME 5: FLAPPY BIRD ---
     let bird = {y:200, v:0}, pipes = []; const gravity = 0.5, lift = -7;
     function initFlappy() { bird = {y:200, v:0}; pipes = []; frameCount = 0; }
     function flapBird() { bird.v = lift; }
     function updateFlappy() {
         bird.v += gravity; bird.y += bird.v; frameCount++;
         // Speed Increases with Level
-        let pipeSpd = 3 + (currentLevel * 0.3); // Level 1=3.3, Level 20=9.0
+        let pipeSpd = 3 + (currentLevel * 0.3); 
 
         if(bird.y > 400 || bird.y < 0) { initFlappy(); totalScore = Math.max(0, totalScore-5); updateLevelUI(); }
-        // Spawn rate depends on speed
-        let spawnRate = Math.floor(100 - (currentLevel * 2)); // Faster spawn at high levels
+        let spawnRate = Math.floor(100 - (currentLevel * 2)); 
         if(frameCount % spawnRate === 0) { let gapH = 130; let topH = Math.random() * (400 - gapH - 40) + 20; pipes.push({x:360, top: topH, gap: gapH}); }
         for(let i=pipes.length-1; i>=0; i--) {
             pipes[i].x -= pipeSpd;

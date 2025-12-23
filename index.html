@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Therapy Hub V22 (Joystick & Fast Flappy)</title>
+    
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-dynamic: #000000; 
+            --card-bg: #111111;
+            --primary: #0984e3;
+            --accent: #00b894;
+            --danger: #d63031;
+            --text: #eeeeee;
+            --border: #333333;
+        }
+
+        body {
+            background-color: var(--bg-dynamic);
+            color: var(--text);
+            font-family: 'Segoe UI', sans-serif;
+            text-align: center;
+            margin: 0; padding: 10px;
+            touch-action: none;
+            display: flex; flex-direction: column; align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+            transition: background-color 0.1s;
+        }
+
+        #font-loader { font-family: 'Material Icons'; opacity: 0; position: absolute; pointer-events: none; }
+
+        .card {
+            background: var(--card-bg);
+            padding: 20px; border-radius: 20px; 
+            width: 100%; max-width: 450px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border: 1px solid var(--border);
+            margin-bottom: 20px; box-sizing: border-box;
+        }
+
+        h1 { margin: 0; color: var(--primary); font-size: 1.8rem; letter-spacing: 1px; }
+        h3 { margin-top: 0; color: #fff; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+
+        input[type="text"] {
+            width: 100%; padding: 15px; margin: 20px 0;
+            background: #222; border: 2px solid var(--border);
+            color: white; font-size: 1.2rem; border-radius: 12px; text-align: center;
+            box-sizing: border-box;
+        }
+
+        .btn {
+            width: 100%; padding: 15px; border: none; border-radius: 12px;
+            font-size: 1rem; font-weight: 800; cursor: pointer; margin-bottom: 12px;
+            text-transform: uppercase; letter-spacing: 1px; color: white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: 0.2s;
+        }
+        .btn:active { transform: scale(0.98); }
+        .btn-primary { background: var(--primary); }
+        .btn-game { background: #222; color: white; border: 2px solid var(--border); }
+        .btn-game:hover { border-color: var(--primary); color: var(--primary); }
+        .btn-end { background: #333; color: #555; cursor: not-allowed; }
+        .btn-end.unlocked { background: var(--accent); color: white; animation: pulse 2s infinite; cursor: pointer; }
+
+        .btn-small { width: auto; padding: 8px 15px; font-size: 0.8rem; margin: 0; background: transparent; border: 1px solid #555; color: #aaa; box-shadow: none; }
+
+        /* CONFIG UI */
+        .config-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .slider-group { background: #1a1a1a; padding: 10px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #333; }
+        .slider-label { font-size: 0.85rem; font-weight: bold; color: #bbb; display: flex; justify-content: space-between; }
+        input[type=range] { width: 100%; margin: 8px 0; cursor: pointer; }
+        input[type="color"] { -webkit-appearance: none; border: none; width: 50px; height: 35px; background: none; cursor: pointer; }
+        .val-disp { font-family: monospace; color: var(--primary); }
+
+        /* LEVEL SELECTOR */
+        .level-selector { background: #222; padding: 15px; border-radius: 12px; border: 1px solid var(--primary); margin-bottom: 20px; }
+
+        /* PREVIEW CANVAS */
+        #previewContainer { margin-bottom: 15px; border: 2px solid #444; border-radius: 10px; overflow: hidden; background: #000; }
+
+        /* GAME UI */
+        #screen-game { width: 100%; max-width: 400px; display: none; flex-direction: column; align-items: center; position: relative; }
+        
+        .game-header { 
+            width: 100%; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; 
+            background: #222; padding: 8px; border-radius: 10px; 
+            margin-bottom: 10px; font-weight: bold; border: 1px solid var(--border); 
+            box-sizing: border-box;
+        }
+        .stat-val { font-size: 1.1rem; color: var(--primary); display: block; }
+        
+        canvas { background-color: #000; display: block; margin: 0 auto; }
+        #gameCanvas {
+            border: 1px solid #444; border-radius: 15px;
+            width: 100%; max-width: 360px; height: auto; aspect-ratio: 360 / 400;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        /* CONTROLS AREA */
+        .control-area { width: 100%; margin-top: 10px; display: none; box-sizing: border-box; }
+        .control-area.show { display: block; }
+
+        /* PONG/TETRIS SLIDER */
+        input[type=range].game-slider {
+            -webkit-appearance: none; width: 100%; height: 50px; 
+            background: #222; border-radius: 25px; border: 2px solid #444;
+            outline: none; margin-top: 10px;
+        }
+        input[type=range].game-slider::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none;
+            width: 60px; height: 46px; border-radius: 23px;
+            background: var(--primary); cursor: pointer;
+            box-shadow: 0 0 10px rgba(9, 132, 227, 0.5);
+        }
+
+        /* BUTTON GRIDS */
+        .big-dpad-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; width: 100%; max-width: 280px; margin: 0 auto; }
+        .dpad-btn { background: #222; border: 2px solid #444; border-radius: 12px; color: white; font-size: 2rem; padding: 15px 0; touch-action: manipulation; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .dpad-btn:active { background: #444; border-color: var(--primary); transform: translateY(2px); }
+        .dpad-spacer { visibility: hidden; }
+
+        /* SNAKE JOYSTICK */
+        .joystick-container {
+            width: 150px; height: 150px; background: rgba(255,255,255,0.1);
+            border: 2px solid #444; border-radius: 50%;
+            margin: 10px auto; position: relative;
+            touch-action: none;
+        }
+        .joystick-knob {
+            width: 60px; height: 60px; background: var(--primary);
+            border-radius: 50%; position: absolute;
+            top: 50%; left: 50%; transform: translate(-50%, -50%);
+            box-shadow: 0 0 15px rgba(9, 132, 227, 0.6);
+            pointer-events: none; /* Let clicks pass to container */
+        }
+
+        .swipe-hint { color: #666; font-size: 0.8rem; margin-bottom: 5px; }
+        .alert-box { background: #1a222d; border: 1px solid #0984e3; color: #74b9ff; padding: 15px; border-radius: 12px; margin-bottom: 20px; text-align: left; font-size: 0.9rem; line-height: 1.5; }
+        
+        #finishedOverlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95); z-index: 100;
+            display: none; flex-direction: column; justify-content: center; align-items: center;
+            border-radius: 20px; text-align: center;
+        }
+
+        .screen { display: none; width: 100%; flex-direction: column; align-items: center; }
+        .active { display: flex; }
+    </style>
+</head>
+<body>
+
+    <div id="font-loader">directions_car bug_report stars navigation touch_app view_module flight refresh rotate_right</div>
+
+    <div id="screen-login" class="screen active card">
+        <h1>👁️ THERAPY HUB</h1>
+        <p style="color:var(--text-mute); font-size:0.9rem;">V22 (Joystick Snake + Fast Flappy)</p>
+        <div class="alert-box">
+            ⚠️ <strong>INSTRUCTIONS:</strong><br>
+            1. Wear Anaglyph Glasses.<br>
+            2. Remove Ghosting in Setup.<br>
+            3. Duration: <strong>15 Minutes</strong>.
+        </div>
+        <input type="text" id="pID" placeholder="Enter Participant ID">
+        <button class="btn btn-primary" onclick="gotoSetup()">NEXT: SETUP</button>
+    </div>
+
+    <div id="screen-setup" class="screen card">
+        <h3>🎨 LIVE CALIBRATION</h3>
+        <div id="previewContainer"><canvas id="calibCanvas" width="300" height="80"></canvas></div>
+        <div style="font-size:0.8rem; color:#aaa; margin-bottom:15px; text-align:left;">
+            <strong>Check:</strong> Close one eye. If you see the wrong object (ghost), adjust "Ghost Cancel" sliders.
+        </div>
+        <div class="slider-group">
+            <div class="config-row"><label>Left Eye (Active)</label><input type="color" id="pickerLeft" value="#ff0000" oninput="updateConfig()"></div>
+            <div class="config-row"><label>Right Eye (Static)</label><input type="color" id="pickerRight" value="#00ffff" oninput="updateConfig()"></div>
+        </div>
+        <div class="slider-group">
+            <div class="slider-label">Target Brightness <span id="dispLum" class="val-disp">100</span></div>
+            <input type="range" id="sliderLum" min="20" max="255" value="100" oninput="updateConfig()">
+        </div>
+        <div class="slider-group">
+            <div style="font-weight:bold; font-size:0.9rem; margin-bottom:5px;">👻 Ghost Cancellation</div>
+            <div class="slider-label"><span style="color:#ff6666">Red Offset</span><span id="dispGhostRed" class="val-disp">0</span></div>
+            <input type="range" id="sliderGhostRed" min="0" max="60" value="0" oninput="updateConfig()">
+            <div class="slider-label" style="margin-top:10px;"><span style="color:#00ffff">Cyan Offset</span><span id="dispGhostCyan" class="val-disp">0</span></div>
+            <input type="range" id="sliderGhostCyan" min="0" max="60" value="0" oninput="updateConfig()">
+        </div>
+        <button class="btn btn-primary" onclick="gotoMenu()">SAVE & CONTINUE</button>
+    </div>
+
+    <div id="screen-menu" class="screen card">
+        <h3>SELECT CHALLENGE</h3>
+        <div style="font-size:1.2rem; margin-bottom:10px;">⏱️ Time: <span id="menuTimer" style="color:var(--primary)">00:00</span></div>
+        
+        <div class="level-selector">
+            <div class="slider-label" style="margin-bottom:10px; color:var(--accent);">
+                🏆 STARTING LEVEL: <span id="dispStartLvl" style="font-size:1.5rem; color:white;">1</span>
+            </div>
+            <input type="range" id="startLevelSlider" min="1" max="20" value="1" style="width:100%; cursor:pointer;" oninput="updateStartLevel(this.value)">
+            <div style="font-size:0.8rem; color:#888; margin-top:5px;">Higher Level = Faster Movement</div>
+        </div>
+
+        <button class="btn btn-game" onclick="startGame('TETRIS')">🧱 TETRIS (BUTTONS)</button>
+        <button class="btn btn-game" onclick="startGame('FLAPPY')">🐦 FLAPPY (TAP)</button>
+        <button class="btn btn-game" onclick="startGame('PONG')">🏓 PONG (SLIDER)</button>
+        <button class="btn btn-game" onclick="startGame('SNAKE')">🐍 SNAKE (JOYSTICK)</button>
+        <button class="btn btn-game" onclick="startGame('CROSSY')">🐸 CROSSY (KEYPAD)</button>
+        
+        <button class="btn-small" style="margin-top:10px; width:100%;" onclick="gotoSetup()">⚙️ Re-Calibrate</button>
+        <hr style="width:100%; border-color:var(--border); margin:20px 0;">
+        <button id="btnEndSession" class="btn btn-end" onclick="submitSession()" disabled>🔒 END SESSION (Wait 15m)</button>
+    </div>
+
+    <div id="screen-game">
+        <div id="finishedOverlay">
+            <h1 style="color:#00b894; font-size:3rem;">🎉</h1>
+            <h2>THERAPY FINISHED</h2>
+            <p>You have completed 15 minutes.</p>
+            <button class="btn btn-primary" onclick="submitSession()" style="width:80%;">SUBMIT DATA</button>
+        </div>
+
+        <div class="game-header">
+            <div>LVL <span id="gameLevel" class="stat-val">1</span></div>
+            <div>PTS <span id="gameScore" class="stat-val">0</span></div>
+            <div>TIME <span id="gameTimer" class="stat-val">00:00</span></div>
+        </div>
+
+        <canvas id="gameCanvas" width="360" height="400"></canvas>
+        <div style="width:100%; text-align:right;">
+            <button class="btn-small" style="margin-top:5px;" onclick="gotoMenu()">⏸️ Menu</button>
+        </div>
+
+        <div id="ctrl-tetris" class="control-area">
+            <div class="big-dpad-grid">
+                <div class="dpad-btn" onclick="inputTetris(-1)">⬅️</div>
+                <div class="dpad-btn" onclick="rotateTetris()"><span class="material-icons" style="font-size:2rem;">rotate_right</span></div>
+                <div class="dpad-btn" onclick="inputTetris(1)">➡️</div>
+            </div>
+        </div>
+
+        <div id="ctrl-flappy" class="control-area">
+            <div class="swipe-hint" style="border: 2px dashed #444; padding: 20px; font-size:1.2rem;">
+                👆 TAP SCREEN TO FLY
+            </div>
+        </div>
+
+        <div id="ctrl-pong" class="control-area">
+            <label style="color:#888; font-size:0.9rem; display:block;">Slide to Move Paddle</label>
+            <input type="range" class="game-slider" id="pongSlider" min="0" max="100" value="50" oninput="movePongSlider(this.value)">
+        </div>
+
+        <div id="ctrl-snake" class="control-area">
+            <div class="swipe-hint">Press & Hold to Steer</div>
+            <div id="joystickZone" class="joystick-container">
+                <div id="joystickKnob" class="joystick-knob"></div>
+            </div>
+        </div>
+
+        <div id="ctrl-crossy" class="control-area">
+            <div class="big-dpad-grid">
+                <div class="dpad-spacer"></div><div class="dpad-btn" onclick="inputCrossy('UP')">⬆️</div><div class="dpad-spacer"></div>
+                <div class="dpad-btn" onclick="inputCrossy('LEFT')">⬅️</div><div class="dpad-btn" onclick="inputCrossy('DOWN')">⬇️</div><div class="dpad-btn" onclick="inputCrossy('RIGHT')">➡️</div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // ================= CONFIGURATION =================
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxwVnaBKDWnHVN4n2eHexR4b4NLGjkU3lGkkT8-GYOs2a3lUd1Nj88Msaox6p_rchOZ/exec'; 
+    const TARGET_SECONDS = 900; // 15 Minutes
+    // =================================================
+
+    // --- GLOBAL APP STATE ---
+    let appConfig = {
+        leftHex: "#ff0000", rightHex: "#00ffff", targetLum: 100, ghostRed: 0, ghostCyan: 0,
+        renderLeft: "rgb(255,0,0)", renderRight: "rgb(0,255,255)", renderBg: "rgb(0,0,0)"
+    };
+
+    let totalSeconds = 0; let totalScore = 0; 
+    let sessionInterval = null; let gameLoop = null; let previewInterval = null; 
+    
+    let userStartLevel = 1; let currentLevel = 1; let levelScore = 0; 
+    let activeGame = ""; let frameCount = 0;
+    const box = 20; let ctx = null;
+
+    // --- NAVIGATION ---
+    function showScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        if(id === 'screen-game') document.getElementById(id).style.display = 'flex';
+        else {
+             document.getElementById(id).classList.add('active');
+             document.getElementById('screen-game').style.display = 'none';
+        }
+        if(id === 'screen-setup') { if(!previewInterval) previewInterval = setInterval(runPreviewLoop, 30); }
+        else { if(previewInterval) { clearInterval(previewInterval); previewInterval = null; } }
+    }
+
+    function gotoSetup() { showScreen('screen-setup'); updateConfig(); }
+    
+    // --- TIMER LOGIC ---
+    function startSessionTimer() {
+        if(sessionInterval) return; 
+        sessionInterval = setInterval(() => {
+            totalSeconds++; updateTimerUI();
+            if(totalSeconds >= TARGET_SECONDS) finishSession();
+        }, 1000);
+    }
+    function stopSessionTimer() { if(sessionInterval) { clearInterval(sessionInterval); sessionInterval = null; } }
+    function gotoMenu() { stopGameEngine(); stopSessionTimer(); updateTimerUI(); showScreen('screen-menu'); }
+    function finishSession() { stopGameEngine(); stopSessionTimer(); document.getElementById('finishedOverlay').style.display = 'flex'; }
+
+    // --- CONFIG & PREVIEW ---
+    let previewSnakeX = 0;
+    function hexToRgb(hex) { const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex); return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : {r:0,g:0,b:0}; }
+    function getLum(r, g, b) { return (0.299 * r + 0.587 * g + 0.114 * b); }
+
+    function updateConfig() {
+        appConfig.leftHex = document.getElementById('pickerLeft').value;
+        appConfig.rightHex = document.getElementById('pickerRight').value;
+        appConfig.targetLum = parseInt(document.getElementById('sliderLum').value);
+        appConfig.ghostRed = parseInt(document.getElementById('sliderGhostRed').value);
+        appConfig.ghostCyan = parseInt(document.getElementById('sliderGhostCyan').value);
+        document.getElementById('dispLum').innerText = appConfig.targetLum;
+        document.getElementById('dispGhostRed').innerText = appConfig.ghostRed;
+        document.getElementById('dispGhostCyan').innerText = appConfig.ghostCyan;
+
+        const lRaw = hexToRgb(appConfig.leftHex); const rRaw = hexToRgb(appConfig.rightHex);
+        const lScale = getLum(lRaw.r,lRaw.g,lRaw.b) > 0 ? appConfig.targetLum / getLum(lRaw.r,lRaw.g,lRaw.b) : 0;
+        const rScale = getLum(rRaw.r,rRaw.g,rRaw.b) > 0 ? appConfig.targetLum / getLum(rRaw.r,rRaw.g,rRaw.b) : 0;
+
+        const lfR = Math.min(255, Math.round(lRaw.r * lScale)); const lfG = Math.min(255, Math.round(lRaw.g * lScale)); const lfB = Math.min(255, Math.round(lRaw.b * lScale));
+        const rfR = Math.min(255, Math.round(rRaw.r * rScale)); const rfG = Math.min(255, Math.round(rRaw.g * rScale)); const rfB = Math.min(255, Math.round(rRaw.b * rScale));
+
+        appConfig.renderLeft = `rgb(${lfR}, ${lfG}, ${lfB})`; appConfig.renderRight = `rgb(${rfR}, ${rfG}, ${rfB})`;
+        appConfig.renderBg = `rgb(${appConfig.ghostRed}, ${appConfig.ghostCyan}, ${appConfig.ghostCyan})`;
+        document.documentElement.style.setProperty('--bg-dynamic', appConfig.renderBg);
+    }
+
+    function runPreviewLoop() {
+        const pCanvas = document.getElementById('calibCanvas'); const pCtx = pCanvas.getContext('2d');
+        pCtx.fillStyle = appConfig.renderBg; pCtx.fillRect(0, 0, pCanvas.width, pCanvas.height);
+        previewSnakeX += 2; if(previewSnakeX > pCanvas.width) previewSnakeX = -40;
+        pCtx.fillStyle = appConfig.renderLeft; pCtx.fillRect(previewSnakeX, 30, 20, 20); pCtx.fillRect(previewSnakeX - 22, 30, 20, 20);
+        pCtx.fillStyle = appConfig.renderRight; pCtx.fillRect(250, 30, 20, 20);
+    }
+
+    // --- GAME ENGINE ---
+    function updateStartLevel(val) { userStartLevel = parseInt(val); document.getElementById('dispStartLvl').innerText = userStartLevel; }
+
+    function startGame(gameName) {
+        activeGame = gameName; showScreen('screen-game');
+        const cvs = document.getElementById('gameCanvas'); ctx = cvs.getContext('2d');
+        
+        setupTouchControls(cvs); 
+        // Joystick Setup for Snake
+        if(gameName === 'SNAKE') setupJoystick();
+
+        document.querySelectorAll('.control-area').forEach(e => e.classList.remove('show'));
+        if(activeGame === 'SNAKE') { document.getElementById('ctrl-snake').classList.add('show'); initSnake(); startSnakeLoop(); }
+        else if(activeGame === 'PONG') { document.getElementById('ctrl-pong').classList.add('show'); initPong(); if(gameLoop) clearInterval(gameLoop); gameLoop = setInterval(gameEngine, 30); }
+        else if(activeGame === 'CROSSY') { document.getElementById('ctrl-crossy').classList.add('show'); initCrossy(); if(gameLoop) clearInterval(gameLoop); gameLoop = setInterval(gameEngine, 30); }
+        else if(activeGame === 'TETRIS') { document.getElementById('ctrl-tetris').classList.add('show'); initTetris(); }
+        else if(activeGame === 'FLAPPY') { document.getElementById('ctrl-flappy').classList.add('show'); initFlappy(); if(gameLoop) clearInterval(gameLoop); gameLoop = setInterval(gameEngine, 30); }
+
+        currentLevel = userStartLevel; levelScore = 0; updateLevelUI(); startSessionTimer();
+    }
+
+    function setupTouchControls(canvas) {
+        canvas.ontouchstart = (e) => {
+            if(activeGame === 'FLAPPY') { flapBird(); e.preventDefault(); return; }
+        };
+        canvas.onmousedown = (e) => { if(activeGame === 'FLAPPY') flapBird(); };
+    }
+
+    // --- VIRTUAL JOYSTICK FOR SNAKE ---
+    function setupJoystick() {
+        const zone = document.getElementById('joystickZone');
+        const knob = document.getElementById('joystickKnob');
+        let rect, center, maxDist = 35; // Max drag radius
+
+        zone.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            rect = zone.getBoundingClientRect();
+            center = { x: rect.width/2, y: rect.height/2 };
+            updateJoystick(e.touches[0]);
+        }, {passive: false});
+
+        zone.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            updateJoystick(e.touches[0]);
+        }, {passive: false});
+
+        zone.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            knob.style.transform = `translate(-50%, -50%)`; // Reset visual center
+            // Snake continues in last direction, no need to reset logic
+        });
+
+        function updateJoystick(touch) {
+            let x = touch.clientX - rect.left - center.x;
+            let y = touch.clientY - rect.top - center.y;
+            
+            // Limit Drag Distance
+            let dist = Math.sqrt(x*x + y*y);
+            if(dist > maxDist) {
+                let angle = Math.atan2(y, x);
+                x = Math.cos(angle) * maxDist;
+                y = Math.sin(angle) * maxDist;
+            }
+            
+            // Move Knob
+            knob.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
+
+            // Calculate Angle for Direction (4-Way)
+            let angleDeg = Math.atan2(y, x) * 180 / Math.PI;
+            if (angleDeg > -45 && angleDeg <= 45) inputSnake('RIGHT');
+            else if (angleDeg > 45 && angleDeg <= 135) inputSnake('DOWN');
+            else if (angleDeg > 135 || angleDeg <= -135) inputSnake('LEFT');
+            else inputSnake('UP');
+        }
+    }
+
+    function clearCanvas() { ctx.fillStyle = appConfig.renderBg; ctx.fillRect(0, 0, 360, 400); }
+
+    function updateTimerUI() {
+        const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0'); const s = (totalSeconds % 60).toString().padStart(2, '0');
+        const txt = `${m}:${s}`; document.getElementById('menuTimer').innerText = txt; document.getElementById('gameTimer').innerText = txt;
+        if(totalSeconds >= TARGET_SECONDS) { const btn = document.getElementById('btnEndSession'); btn.disabled = false; btn.classList.add('unlocked'); btn.innerText = "✅ END SESSION"; }
+    }
+    function updateLevelUI() { document.getElementById('gameLevel').innerText = currentLevel; document.getElementById('gameScore').innerText = totalScore; }
+    function stopGameEngine() { if(gameLoop) clearTimeout(gameLoop); if(gameLoop) clearInterval(gameLoop); }
+    
+    function submitSession() {
+        if(!confirm("Submit Data?")) return;
+        document.getElementById('btnEndSession').innerText = "Sending...";
+        fetch(SCRIPT_URL, {
+            method: 'POST', body: new URLSearchParams({ action: 'end', pID: document.getElementById('pID').value, pDate: new Date().toISOString().split('T')[0], score: totalScore })
+        }).then(() => { alert("Saved!"); location.reload(); });
+    }
+
+    function gameEngine() {
+        if(activeGame === 'SNAKE') updateSnake();
+        else if(activeGame === 'PONG') updatePong();
+        else if(activeGame === 'CROSSY') updateCrossy();
+        else if(activeGame === 'FLAPPY') updateFlappy();
+    }
+    
+    function showLevelUp() { ctx.save(); ctx.fillStyle = "#0984e3"; ctx.font = "bold 30px 'Segoe UI'"; ctx.textAlign = "center"; ctx.fillText("LEVEL UP!", 180, 200); ctx.restore(); }
+
+    // --- GAME 1: SNAKE ---
+    let snake = [], food = {}, d = "RIGHT";
+    function initSnake() { snake = [{x: 9*box, y: 10*box}, {x: 8*box, y: 10*box}, {x: 7*box, y: 10*box}]; createFood(); d = "RIGHT"; }
+    function startSnakeLoop() { 
+        if(gameLoop) clearTimeout(gameLoop); 
+        let delay = Math.max(60, 260 - (currentLevel * 10)); 
+        gameEngine(); 
+        gameLoop = setTimeout(startSnakeLoop, delay); 
+    }
+    function createFood() { food = { x: Math.floor(Math.random()*18)*box, y: Math.floor(Math.random()*20)*box }; }
+    function inputSnake(dir) { if(dir=="LEFT"&&d!="RIGHT")d="LEFT"; if(dir=="UP"&&d!="DOWN")d="UP"; if(dir=="RIGHT"&&d!="LEFT")d="RIGHT"; if(dir=="DOWN"&&d!="UP")d="DOWN"; }
+    function updateSnake() {
+        let sx = snake[0].x; let sy = snake[0].y;
+        if(d=="LEFT") sx -= box; if(d=="UP") sy -= box; if(d=="RIGHT") sx += box; if(d=="DOWN") sy += box;
+        if(sx < 0 || sx >= 360 || sy < 0 || sy >= 400) { initSnake(); return; }
+        if(sx == food.x && sy == food.y) { 
+            totalScore++; levelScore++; createFood(); 
+            if(levelScore >= 30) { if(currentLevel < 20) currentLevel++; levelScore = 0; showLevelUp(); } 
+            updateLevelUI(); 
+        } else { snake.pop(); }
+        snake.unshift({x:sx, y:sy}); drawSnake();
+    }
+    function drawSnake() {
+        clearCanvas();
+        ctx.fillStyle = appConfig.renderLeft; ctx.font = "20px 'Material Icons'"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        for(let i=0; i<snake.length; i++) {
+            let cx = snake[i].x + box/2; let cy = snake[i].y + box/2;
+            if(i==0) { ctx.save(); ctx.translate(cx, cy); let angle = 0; if(d=="UP") angle=0; if(d=="RIGHT") angle=90*Math.PI/180; if(d=="DOWN") angle=180*Math.PI/180; if(d=="LEFT") angle=-90*Math.PI/180; ctx.rotate(angle); ctx.fillText("navigation", 0, 0); ctx.restore(); } 
+            else { ctx.fillText("circle", cx, cy); }
+        }
+        ctx.fillStyle = appConfig.renderRight; let fx = food.x + box/2; let fy = food.y + box/2; ctx.font = "24px 'Material Icons'"; ctx.fillText("stars", fx, fy);
+    }
+
+    // --- GAME 2: PONG ---
+    let paddle = {}, ball = {}, bricks = [];
+    function initPong() { 
+        let spd = 3 + (currentLevel * 0.5); 
+        ball = {x:180, y:200, dx:spd, dy:-spd, r:6}; paddle = {x:140, y:370, w:80, h:10}; bricks = []; for(let c=0; c<5; c++) { for(let r=0; r<4; r++) { bricks.push({ x: c*70 + 10, y: r*25 + 30, status: 1 }); } } 
+    }
+    function movePongSlider(val) { let maxPos = 360 - paddle.w; paddle.x = (val / 100) * maxPos; }
+    function updatePong() {
+        ball.x += ball.dx; ball.y += ball.dy; if(ball.x < 0 || ball.x > 360) ball.dx = -ball.dx; if(ball.y < 0) ball.dy = -ball.dy;
+        if(ball.y > paddle.y && ball.x > paddle.x && ball.x < paddle.x + paddle.w) ball.dy = -Math.abs(ball.dy);
+        if(ball.y > 400) { initPong(); return; }
+        let activeBricks = 0; for(let i=0; i<bricks.length; i++) { let b = bricks[i]; if(b.status == 1) { activeBricks++; if(ball.x > b.x && ball.x < b.x+60 && ball.y > b.y && ball.y < b.y+20) { ball.dy = -ball.dy; b.status = 0; totalScore += 5; updateLevelUI(); } } }
+        if(activeBricks == 0) { if(currentLevel < 20) currentLevel++; showLevelUp(); stopGameEngine(); setTimeout(() => { initPong(); gameLoop = setInterval(gameEngine, 30); }, 1000); updateLevelUI(); }
+        drawPong();
+    }
+    function drawPong() {
+        clearCanvas(); ctx.fillStyle = appConfig.renderLeft; ctx.beginPath(); ctx.roundRect(paddle.x, paddle.y, paddle.w, paddle.h, 5); ctx.fill();
+        ctx.fillStyle = appConfig.renderRight; ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2); ctx.fill();
+        for(let i=0; i<bricks.length; i++) { if(bricks[i].status == 1) { ctx.beginPath(); ctx.roundRect(bricks[i].x, bricks[i].y, 60, 20, 4); ctx.fill(); } }
+    }
+
+    // --- GAME 3: CROSSY ---
+    let frog = {}, cars = [];
+    function initCrossy() { frog = { x: 180, y: 380, r: 10 }; cars = []; for(let i=0; i<5; i++) { let yPos = 300 - (i * 50); let speed = (Math.random() * 2 + 1) + (currentLevel * 0.3); if(i % 2 == 0) speed *= -1; cars.push({ x: 0, y: yPos, w: 40, h: 20, s: speed }); cars.push({ x: 200, y: yPos, w: 40, h: 20, s: speed }); } }
+    function inputCrossy(dir) { if(dir=="UP")frog.y-=20; if(dir=="DOWN")frog.y+=20; if(dir=="LEFT")frog.x-=20; if(dir=="RIGHT")frog.x+=20; if(frog.x<10)frog.x=10; if(frog.x>350)frog.x=350; if(frog.y>380)frog.y=380; }
+    function updateCrossy() {
+        cars.forEach(c => {
+            c.x += c.s; if(c.x > 360) c.x = -40; if(c.x < -40) c.x = 360;
+            let padding = 6; let fL = frog.x - 10 + padding; let fR = frog.x + 10 - padding; let fT = frog.y - 10 + padding; let fB = frog.y + 10 - padding;
+            if(fR > c.x && fL < c.x+c.w && fB > c.y && fT < c.y+c.h) { ctx.fillStyle="#d63031"; ctx.fillRect(0,0,360,400); initCrossy(); }
+        });
+        if(frog.y < 30) { totalScore += 10; if(currentLevel < 20) currentLevel++; showLevelUp(); levelScore = 0; updateLevelUI(); initCrossy(); frog.y = 380; }
+        drawCrossy();
+    }
+    function drawCrossy() {
+        clearCanvas(); ctx.strokeStyle = "#333"; for(let i=0; i<5; i++) { let yPos = 300 - (i * 50); ctx.beginPath(); ctx.moveTo(0, yPos+10); ctx.lineTo(360, yPos+10); ctx.stroke(); }
+        ctx.fillStyle = appConfig.renderLeft; ctx.font = "40px 'Material Icons'"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        cars.forEach(c => { ctx.save(); ctx.translate(c.x+c.w/2, c.y+c.h/2); if(c.s < 0) ctx.scale(-1, 1); ctx.fillText("directions_car", 0, 0); ctx.restore(); });
+        ctx.fillStyle = appConfig.renderRight; ctx.font = "30px 'Material Icons'"; ctx.fillText("bug_report", frog.x, frog.y);
+    }
+
+    // --- GAME 4: TETRIS ---
+    const tRows = 20, tCols = 10; const tSize = 20; const tOffsetX = (360 - (tCols*tSize)) / 2;
+    const shapes = [ [ [1,1,1,1] ], [ [1,1,1],[0,1,0] ], [ [1,1,1],[1,0,0] ], [ [1,1,1],[0,0,1] ], [ [1,1],[1,1] ], [ [1,1,0],[0,1,1] ], [ [0,1,1],[1,1,0] ] ];
+    let tGrid = [], tPiece = null;
+    function initTetris() { tGrid = []; for(let r=0; r<tRows; r++) { tGrid[r] = new Array(tCols).fill(0); } spawnTetrisPiece(); if(gameLoop) clearTimeout(gameLoop); runTetrisLoop(); }
+    function spawnTetrisPiece() { let typeId = Math.floor(Math.random() * shapes.length); tPiece = { shape: shapes[typeId], x: 3, y: 0 }; if(collide(tGrid, tPiece)) { for(let r=0; r<tRows; r++) tGrid[r].fill(0); totalScore = Math.max(0, totalScore-10); updateLevelUI(); } }
+    
+    function runTetrisLoop() {
+        if(activeGame !== 'TETRIS') return;
+        tPiece.y++;
+        if(collide(tGrid, tPiece)) { tPiece.y--; mergeGrid(tGrid, tPiece); sweepTetris(); spawnTetrisPiece(); }
+        drawTetris();
+        let delay = Math.max(100, 800 - (currentLevel * 35)); 
+        gameLoop = setTimeout(runTetrisLoop, delay);
+    }
+    
+    function inputTetris(dir) {
+        if(!tPiece) return;
+        let oldX = tPiece.x;
+        tPiece.x += dir;
+        if(collide(tGrid, tPiece)) tPiece.x = oldX;
+        drawTetris();
+    }
+
+    function rotateTetris() { if(!tPiece) return; let original = tPiece.shape; let rotated = original[0].map((val, index) => original.map(row => row[index]).reverse()); tPiece.shape = rotated; if(collide(tGrid, tPiece)) { if(tPiece.x > tCols/2) tPiece.x--; else tPiece.x++; if(collide(tGrid, tPiece)) tPiece.shape = original; } drawTetris(); }
+    function collide(grid, piece) { for(let r=0; r<piece.shape.length; r++) { for(let c=0; c<piece.shape[r].length; c++) { if(piece.shape[r][c] !== 0) { let ny = piece.y + r; let nx = piece.x + c; if(ny < 0) continue; if(ny >= tRows || nx < 0 || nx >= tCols) return true; if(grid[ny][nx] !== 0) return true; } } } return false; }
+    function mergeGrid(grid, piece) { for(let r=0; r<piece.shape.length; r++) { for(let c=0; c<piece.shape[r].length; c++) { if(piece.shape[r][c] !== 0) { if(piece.y + r >= 0) grid[piece.y + r][piece.x + c] = 1; } } } }
+    function sweepTetris() { let lines = 0; outer: for(let r=tRows-1; r>=0; r--) { for(let c=0; c<tCols; c++) { if(tGrid[r][c] === 0) continue outer; } tGrid.splice(r, 1); tGrid.unshift(new Array(tCols).fill(0)); lines++; r++; } if(lines > 0) { totalScore += lines * 10; levelScore += lines; if(levelScore >= 5) { if(currentLevel < 20) currentLevel++; levelScore = 0; showLevelUp(); } updateLevelUI(); } }
+    function drawTetris() {
+        clearCanvas(); ctx.strokeStyle = "#333"; ctx.strokeRect(tOffsetX, 0, tCols*tSize, tRows*tSize);
+        ctx.fillStyle = appConfig.renderRight; for(let r=0; r<tRows; r++) { for(let c=0; c<tCols; c++) { if(tGrid[r][c] !== 0) ctx.fillRect(tOffsetX + c*tSize, r*tSize, tSize-1, tSize-1); } }
+        if(tPiece) { ctx.fillStyle = appConfig.renderLeft; for(let r=0; r<tPiece.shape.length; r++) { for(let c=0; c<tPiece.shape[r].length; c++) { if(tPiece.shape[r][c] !== 0) ctx.fillRect(tOffsetX + (tPiece.x+c)*tSize, (tPiece.y+r)*tSize, tSize-1, tSize-1); } } }
+    }
+
+    // --- GAME 5: FLAPPY BIRD (Variable Speed) ---
+    let bird = {y:200, v:0}, pipes = []; const gravity = 0.5, lift = -7;
+    function initFlappy() { bird = {y:200, v:0}; pipes = []; frameCount = 0; }
+    function flapBird() { bird.v = lift; }
+    function updateFlappy() {
+        bird.v += gravity; bird.y += bird.v; frameCount++;
+        // Speed Increases with Level
+        let pipeSpd = 3 + (currentLevel * 0.3); // Level 1=3.3, Level 20=9.0
+
+        if(bird.y > 400 || bird.y < 0) { initFlappy(); totalScore = Math.max(0, totalScore-5); updateLevelUI(); }
+        // Spawn rate depends on speed
+        let spawnRate = Math.floor(100 - (currentLevel * 2)); // Faster spawn at high levels
+        if(frameCount % spawnRate === 0) { let gapH = 130; let topH = Math.random() * (400 - gapH - 40) + 20; pipes.push({x:360, top: topH, gap: gapH}); }
+        for(let i=pipes.length-1; i>=0; i--) {
+            pipes[i].x -= pipeSpd;
+            if(pipes[i].x < -40) { 
+                pipes.splice(i, 1); totalScore++; levelScore++; 
+                if(levelScore >= 3) { if(currentLevel < 20) { currentLevel++; showLevelUp(); } levelScore = 0; }
+                updateLevelUI(); 
+            }
+            let p = pipes[i]; let bx = 70, by = bird.y, bw = 24; 
+            if(bx + bw/2 > p.x && bx - bw/2 < p.x + 40) { if(by - 12 < p.top || by + 12 > p.top + p.gap) { initFlappy(); } }
+        }
+        drawFlappy();
+    }
+    function drawFlappy() {
+        clearCanvas();
+        ctx.fillStyle = appConfig.renderRight;
+        pipes.forEach(p => { ctx.fillRect(p.x, 0, 40, p.top); ctx.fillRect(p.x, p.top + p.gap, 40, 400 - (p.top + p.gap)); });
+        ctx.fillStyle = appConfig.renderLeft;
+        let bx = 70, by = bird.y;
+        ctx.fillRect(bx - 12, by - 12, 24, 24); ctx.fillRect(bx + 12, by - 4, 6, 8);
+        ctx.fillStyle = appConfig.renderBg; ctx.fillRect(bx - 6, by - 2, 10, 6); ctx.fillRect(bx + 4, by - 8, 4, 4);
+    }
+    
+    updateConfig();
+</script>
+</body>
+</html>
